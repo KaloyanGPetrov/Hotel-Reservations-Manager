@@ -23,8 +23,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Profiles\" />
-    <Folder Include="Services\" />
+    <Folder Include="Services\Abstraction\" />
   </ItemGroup>
 
 </Project>
