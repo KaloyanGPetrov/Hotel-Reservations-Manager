@@ -7,22 +7,33 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using Hotel_Reservations_Manager.Data;
 using Hotel_Reservations_Manager.Data.Entities;
+using Hotel_Reservations_Manager.Services.Abstraction;
+using Hotel_Reservations_Manager.Services;
+using Hotel_Reservations_Manager.DTOs;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Hotel_Reservations_Manager.Controllers
 {
     public class ClientsController : Controller
     {
-        private readonly ApplicationDbContext _context;
+        private readonly IClientServices _clientServices;
 
-        public ClientsController(ApplicationDbContext context)
+        public ClientsController(IClientServices clientServices)
         {
-            _context = context;
+            _clientServices = clientServices;
         }
 
         // GET: Clients
         public async Task<IActionResult> Index()
         {
-            return View(await _context.Client.ToListAsync());
+            return View(await _clientServices.GetAllAsync());
+        }
+
+
+        [Route("Clients/Search/{name}")]
+        public IActionResult Search(string name)
+        {
+            return View(_clientServices.GetByName(name));
         }
 
         // GET: Clients/Details/5
@@ -33,8 +44,7 @@ namespace Hotel_Reservations_Manager.Controllers
                 return NotFound();
             }
 
-            var client = await _context.Client
-                .FirstOrDefaultAsync(m => m.Id == id);
+            var client = await _clientServices.GetByIdAsync(id.Value);
             if (client == null)
             {
                 return NotFound();
@@ -49,23 +59,22 @@ namespace Hotel_Reservations_Manager.Controllers
             return View();
         }
 
-        // POST: Clients/Create
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
+        // POST: Clients/Creat
         [HttpPost]
+        [Authorize]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("FirstName,LastName,TelephoneNumber,Email,IsOfAge,Id")] Client client)
+        public async Task<IActionResult> Create([Bind("FirstName,LastName,TelephoneNumber,Email,IsOfAge,Id")] ClientDTO clientDto)
         {
             if (ModelState.IsValid)
             {
-                _context.Add(client);
-                await _context.SaveChangesAsync();
+                await _clientServices.CreateAsync(clientDto);
                 return RedirectToAction(nameof(Index));
             }
-            return View(client);
+            return View(clientDto);
         }
 
         // GET: Clients/Edit/5
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Edit(int? id)
         {
             if (id == null)
@@ -73,7 +82,7 @@ namespace Hotel_Reservations_Manager.Controllers
                 return NotFound();
             }
 
-            var client = await _context.Client.FindAsync(id);
+            var client = await _clientServices.GetByIdAsync(id.Value);
             if (client == null)
             {
                 return NotFound();
@@ -82,13 +91,12 @@ namespace Hotel_Reservations_Manager.Controllers
         }
 
         // POST: Clients/Edit/5
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
+        [Authorize(Roles = "Admin")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("FirstName,LastName,TelephoneNumber,Email,IsOfAge,Id")] Client client)
+        public async Task<IActionResult> Edit(int id, [Bind("FirstName,LastName,TelephoneNumber,Email,IsOfAge,Id")] ClientDTO clientDto)
         {
-            if (id != client.Id)
+            if (id != clientDto.Id)
             {
                 return NotFound();
             }
@@ -97,12 +105,11 @@ namespace Hotel_Reservations_Manager.Controllers
             {
                 try
                 {
-                    _context.Update(client);
-                    await _context.SaveChangesAsync();
+                    await _clientServices.UpdateAsync(clientDto);
                 }
                 catch (DbUpdateConcurrencyException)
                 {
-                    if (!ClientExists(client.Id))
+                    if (!await ClientExists(clientDto.Id))
                     {
                         return NotFound();
                     }
@@ -113,10 +120,11 @@ namespace Hotel_Reservations_Manager.Controllers
                 }
                 return RedirectToAction(nameof(Index));
             }
-            return View(client);
+            return View(clientDto);
         }
 
         // GET: Clients/Delete/5
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Delete(int? id)
         {
             if (id == null)
@@ -124,8 +132,7 @@ namespace Hotel_Reservations_Manager.Controllers
                 return NotFound();
             }
 
-            var client = await _context.Client
-                .FirstOrDefaultAsync(m => m.Id == id);
+            var client = await _clientServices.GetByIdAsync(id.Value);
             if (client == null)
             {
                 return NotFound();
@@ -134,24 +141,21 @@ namespace Hotel_Reservations_Manager.Controllers
             return View(client);
         }
 
+
         // POST: Clients/Delete/5
+        [Authorize(Roles = "Admin")]
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
-            var client = await _context.Client.FindAsync(id);
-            if (client != null)
-            {
-                _context.Client.Remove(client);
-            }
-
-            await _context.SaveChangesAsync();
+            await _clientServices.DeleteAsync(id);
             return RedirectToAction(nameof(Index));
         }
 
-        private bool ClientExists(int id)
+        private async Task<bool> ClientExists(int id)
         {
-            return _context.Client.Any(e => e.Id == id);
+            var item = await _clientServices.GetByIdAsync(id);
+            return item != null;
         }
     }
 }

@@ -7,22 +7,31 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using Hotel_Reservations_Manager.Data;
 using Hotel_Reservations_Manager.Data.Entities;
+using Hotel_Reservations_Manager.Services.Abstraction;
+using Microsoft.AspNetCore.Authorization;
+using Hotel_Reservations_Manager.DTOs;
 
 namespace Hotel_Reservations_Manager.Controllers
 {
     public class RoomsController : Controller
     {
-        private readonly ApplicationDbContext _context;
+        private readonly IRoomServices _roomServices;
 
-        public RoomsController(ApplicationDbContext context)
+        public RoomsController(IRoomServices roomServices)
         {
-            _context = context;
+            _roomServices = roomServices;
         }
 
         // GET: Rooms
         public async Task<IActionResult> Index()
         {
-            return View(await _context.Room.ToListAsync());
+            return View(await _roomServices.GetAllAsync());
+        }
+
+        [Route("Rooms/Search/{number}")]
+        public IActionResult Search(string number)
+        {
+            return View(_roomServices.GetByNumber(number));
         }
 
         // GET: Rooms/Details/5
@@ -33,8 +42,7 @@ namespace Hotel_Reservations_Manager.Controllers
                 return NotFound();
             }
 
-            var room = await _context.Room
-                .FirstOrDefaultAsync(m => m.Id == id);
+            var room = await _roomServices.GetByIdAsync(id.Value);
             if (room == null)
             {
                 return NotFound();
@@ -50,22 +58,21 @@ namespace Hotel_Reservations_Manager.Controllers
         }
 
         // POST: Rooms/Create
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
+        [Authorize]
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Capacity,Type,IsOccupied,PriceAdult,PriceChild,Number,Id")] Room room)
+        public async Task<IActionResult> Create([Bind("Capacity,Type,IsOccupied,PriceAdult,PriceChild,Number,Id")] RoomDTO roomDto)
         {
             if (ModelState.IsValid)
             {
-                _context.Add(room);
-                await _context.SaveChangesAsync();
+                await _roomServices.CreateAsync(roomDto);
                 return RedirectToAction(nameof(Index));
             }
-            return View(room);
+            return View(roomDto);
         }
 
         // GET: Rooms/Edit/5
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Edit(int? id)
         {
             if (id == null)
@@ -73,7 +80,7 @@ namespace Hotel_Reservations_Manager.Controllers
                 return NotFound();
             }
 
-            var room = await _context.Room.FindAsync(id);
+            var room = await _roomServices.GetByIdAsync(id.Value);
             if (room == null)
             {
                 return NotFound();
@@ -82,13 +89,12 @@ namespace Hotel_Reservations_Manager.Controllers
         }
 
         // POST: Rooms/Edit/5
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
+        [Authorize(Roles = "Admin")]
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("Capacity,Type,IsOccupied,PriceAdult,PriceChild,Number,Id")] Room room)
+        public async Task<IActionResult> Edit(int id, [Bind("Capacity,Type,IsOccupied,PriceAdult,PriceChild,Number,Id")] RoomDTO roomDto)
         {
-            if (id != room.Id)
+            if (id != roomDto.Id)
             {
                 return NotFound();
             }
@@ -97,12 +103,11 @@ namespace Hotel_Reservations_Manager.Controllers
             {
                 try
                 {
-                    _context.Update(room);
-                    await _context.SaveChangesAsync();
+                    await _roomServices.UpdateAsync(roomDto);
                 }
                 catch (DbUpdateConcurrencyException)
                 {
-                    if (!RoomExists(room.Id))
+                    if (!await RoomExists(roomDto.Id))
                     {
                         return NotFound();
                     }
@@ -113,10 +118,11 @@ namespace Hotel_Reservations_Manager.Controllers
                 }
                 return RedirectToAction(nameof(Index));
             }
-            return View(room);
+            return View(roomDto);
         }
 
         // GET: Rooms/Delete/5
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Delete(int? id)
         {
             if (id == null)
@@ -124,8 +130,7 @@ namespace Hotel_Reservations_Manager.Controllers
                 return NotFound();
             }
 
-            var room = await _context.Room
-                .FirstOrDefaultAsync(m => m.Id == id);
+            var room = await _roomServices.GetByIdAsync(id.Value);
             if (room == null)
             {
                 return NotFound();
@@ -135,23 +140,19 @@ namespace Hotel_Reservations_Manager.Controllers
         }
 
         // POST: Rooms/Delete/5
+        [Authorize(Roles = "Admin")]
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
-            var room = await _context.Room.FindAsync(id);
-            if (room != null)
-            {
-                _context.Room.Remove(room);
-            }
-
-            await _context.SaveChangesAsync();
+            await _roomServices.DeleteAsync(id);
             return RedirectToAction(nameof(Index));
         }
 
-        private bool RoomExists(int id)
+        private async Task<bool> RoomExists(int id)
         {
-            return _context.Room.Any(e => e.Id == id);
+            var item = await _roomServices.GetByIdAsync(id);
+            return item != null;
         }
     }
 }

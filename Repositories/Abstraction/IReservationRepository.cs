@@ -2,12 +2,8 @@
 
 namespace Hotel_Reservations_Manager.Repositories.Abstraction
 {
-    public interface IReservationRepository 
+    public interface IReservationRepository : ICrudRepository<Reservation>
     {
-        Task CreateAsync(Reservation reservation);
-        //TODO: edit visit
-        //TODO: get all visits
-        //TODO: get visit by id
-        //TODO: delete visit
+
     }
 }

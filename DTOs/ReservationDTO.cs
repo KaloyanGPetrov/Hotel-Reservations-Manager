@@ -4,6 +4,7 @@ namespace Hotel_Reservations_Manager.DTOs
 {
     public class ReservationDTO
     {
+        public int Id { get; set; }
         public string RoomId { get; set; }
 
         public Room? Room { get; set; }

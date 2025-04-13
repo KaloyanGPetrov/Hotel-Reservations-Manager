@@ -3,6 +3,8 @@ using Hotel_Reservations_Manager.Data.Entities;
 using Hotel_Reservations_Manager.Data.Seeder;
 using Hotel_Reservations_Manager.Repositories;
 using Hotel_Reservations_Manager.Repositories.Abstraction;
+using Hotel_Reservations_Manager.Services;
+using Hotel_Reservations_Manager.Services.Abstraction;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -25,14 +27,19 @@ namespace Hotel_Reservations_Manager
             builder.Services.AddDefaultIdentity<User>(options => options.SignIn.RequireConfirmedAccount = true)
                 .AddRoles<IdentityRole>()
                 .AddEntityFrameworkStores<ApplicationDbContext>();
-            builder.Services.AddControllersWithViews();
+            builder.Services.AddControllersWithViews(); 
 
             builder.Services.AddScoped<IRoomRepository, RoomRepository>();
             builder.Services.AddScoped<IReservationRepository, ReservationRepository>();
             builder.Services.AddScoped<IClientRepository, ClientRepository>();
 
-            var app = builder.Build();
+            builder.Services.AddScoped<IRoomServices, RoomServices>();
+            builder.Services.AddScoped<IReservationServices, ReservationServices>();
+            builder.Services.AddScoped<IClientServices, ClientServices>();
+            builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
+
+            var app = builder.Build();
             using (var scope = app.Services.CreateScope())
             {
                 var services = scope.ServiceProvider;

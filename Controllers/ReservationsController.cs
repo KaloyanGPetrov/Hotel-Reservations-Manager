@@ -7,23 +7,41 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using Hotel_Reservations_Manager.Data;
 using Hotel_Reservations_Manager.Data.Entities;
+using Hotel_Reservations_Manager.Services.Abstraction;
+using Hotel_Reservations_Manager.Services;
+using Microsoft.AspNetCore.Authorization;
+using Hotel_Reservations_Manager.DTOs;
+using Microsoft.AspNetCore.Identity;
 
 namespace Hotel_Reservations_Manager.Controllers
 {
     public class ReservationsController : Controller
     {
+        //private readonly IReservationServices _reservationServices;
+        //private readonly IRoomServices _roomServices;
+        //private readonly IClientServices _clientServices;
         private readonly ApplicationDbContext _context;
+        private readonly UserManager<User> _userManager;
 
-        public ReservationsController(ApplicationDbContext context)
+        public ReservationsController(ApplicationDbContext context, UserManager<User> userManager)
         {
             _context = context;
+            _userManager = userManager;
         }
 
         // GET: Reservations
         public async Task<IActionResult> Index()
         {
-            var applicationDbContext = _context.Reservation.Include(r => r.Room);
+
+            var applicationDbContext = _context.Reservation.Include(r => r.Room).Include(r => r.User);
             return View(await applicationDbContext.ToListAsync());
+        }
+
+        [Route("Reservations/Search/{name}")]
+        public IActionResult Search(string roomNumber)
+        {
+
+            return View(_context.Reservation.Where(r => r.Room.Number == roomNumber));
         }
 
         // GET: Reservations/Details/5
@@ -34,42 +52,46 @@ namespace Hotel_Reservations_Manager.Controllers
                 return NotFound();
             }
 
-            var reservation = await _context.Reservation
+            var review = await _context.Reservation
                 .Include(r => r.Room)
+                .Include(r => r.User)
                 .FirstOrDefaultAsync(m => m.Id == id);
-            if (reservation == null)
+            if (review == null)
             {
                 return NotFound();
             }
 
-            return View(reservation);
+            return View(review);
         }
 
         // GET: Reservations/Create
         public IActionResult Create()
         {
-            ViewData["RoomId"] = new SelectList(_context.Room, "Id", "Id");
+            ViewData["RoomId"] = new SelectList(_context.Room, "Id", "Number");
+            ViewData["UserId"] = _userManager.GetUserId(User);
             return View();
         }
 
         // POST: Reservations/Create
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
+        
         [HttpPost]
+        [Authorize]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("RoomId,UserId,StartDate,EndDate,BreackfastIncluded,AllInclusive,Id")] Reservation reservation)
+        public async Task<IActionResult> Create([Bind("RoomId,UserId,StartDate,EndDate,BreackfastIncluded,AllInclusive,Id")] ReservationDTO reservationDto)
         {
             if (ModelState.IsValid)
             {
-                _context.Add(reservation);
+                _context.Add(reservationDto);
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
             }
-            ViewData["RoomId"] = new SelectList(_context.Room, "Id", "Id", reservation.RoomId);
-            return View(reservation);
+            ViewData["RoomId"] = new SelectList(_context.Reservation, "Id", "Name", reservationDto.RoomId);
+            ViewData["UserId"] = _userManager.GetUserId(User);
+            return View(reservationDto);
         }
 
         // GET: Reservations/Edit/5
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Edit(int? id)
         {
             if (id == null)
@@ -82,18 +104,18 @@ namespace Hotel_Reservations_Manager.Controllers
             {
                 return NotFound();
             }
-            ViewData["RoomId"] = new SelectList(_context.Room, "Id", "Id", reservation.RoomId);
+            ViewData["RoomId"] = new SelectList(_context.Room, "Id", "Name", reservation.RoomId);
+            ViewData["UserId"] = _userManager.GetUserId(User);
             return View(reservation);
         }
 
         // POST: Reservations/Edit/5
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
+        [Authorize(Roles = "Admin")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("RoomId,UserId,StartDate,EndDate,BreackfastIncluded,AllInclusive,Id")] Reservation reservation)
+        public async Task<IActionResult> Edit(int id, [Bind("RoomId,UserId,StartDate,EndDate,BreackfastIncluded,AllInclusive,Id")] ReservationDTO reservationDto)
         {
-            if (id != reservation.Id)
+            if (id != reservationDto.Id)
             {
                 return NotFound();
             }
@@ -102,12 +124,12 @@ namespace Hotel_Reservations_Manager.Controllers
             {
                 try
                 {
-                    _context.Update(reservation);
+                    _context.Update(reservationDto);
                     await _context.SaveChangesAsync();
                 }
                 catch (DbUpdateConcurrencyException)
                 {
-                    if (!ReservationExists(reservation.Id))
+                    if (!ReservationExists(reservationDto.Id))
                     {
                         return NotFound();
                     }
@@ -118,11 +140,13 @@ namespace Hotel_Reservations_Manager.Controllers
                 }
                 return RedirectToAction(nameof(Index));
             }
-            ViewData["RoomId"] = new SelectList(_context.Room, "Id", "Id", reservation.RoomId);
-            return View(reservation);
+            ViewData["RoomId"] = new SelectList(_context.Room, "Id", "Name", reservationDto.RoomId);
+            ViewData["UserId"] = _userManager.GetUserId(User);
+            return View(reservationDto);
         }
 
         // GET: Reservations/Delete/5
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Delete(int? id)
         {
             if (id == null)
@@ -132,6 +156,7 @@ namespace Hotel_Reservations_Manager.Controllers
 
             var reservation = await _context.Reservation
                 .Include(r => r.Room)
+                .Include(r => r.User)
                 .FirstOrDefaultAsync(m => m.Id == id);
             if (reservation == null)
             {

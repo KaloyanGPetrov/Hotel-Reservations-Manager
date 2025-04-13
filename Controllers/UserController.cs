@@ -9,9 +9,11 @@ using Hotel_Reservations_Manager.Data;
 using Hotel_Reservations_Manager.Models;
 using Hotel_Reservations_Manager.Data.Entities;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Hotel_Reservations_Manager.Controllers
 {
+    [Authorize(Roles = "Admin")]
     public class UserController : Controller
     {
         private UserManager<User> _userManager;
@@ -49,8 +51,6 @@ namespace Hotel_Reservations_Manager.Controllers
         }
 
         // POST: UserViewModels/Create
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(UserViewModel model)
@@ -102,8 +102,6 @@ namespace Hotel_Reservations_Manager.Controllers
         }
 
         // POST: UserViewModels/Edit/5
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(string id, UserViewModel model)
