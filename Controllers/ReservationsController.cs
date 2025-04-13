@@ -33,7 +33,7 @@ namespace Hotel_Reservations_Manager.Controllers
         public async Task<IActionResult> Index()
         {
 
-            var applicationDbContext = _context.Reservation.Include(r => r.Room).Include(r => r.User);
+            var applicationDbContext = _context.Reservation.Include(r => r.Room).Include(r => r.User).Include(r => r.Clients);
             return View(await applicationDbContext.ToListAsync());
         }
 
@@ -55,6 +55,7 @@ namespace Hotel_Reservations_Manager.Controllers
             var review = await _context.Reservation
                 .Include(r => r.Room)
                 .Include(r => r.User)
+                .Include(r => r.Clients)
                 .FirstOrDefaultAsync(m => m.Id == id);
             if (review == null)
             {
@@ -68,7 +69,7 @@ namespace Hotel_Reservations_Manager.Controllers
         public IActionResult Create()
         {
             ViewData["RoomId"] = new SelectList(_context.Room, "Id", "Number");
-            ViewData["UserId"] = _userManager.GetUserId(User);
+            ViewData["UserId"] = new SelectList(_context.Users, "Id", "Username");
             return View();
         }
 
@@ -77,17 +78,18 @@ namespace Hotel_Reservations_Manager.Controllers
         [HttpPost]
         [Authorize]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("RoomId,UserId,StartDate,EndDate,BreackfastIncluded,AllInclusive,Id")] ReservationDTO reservationDto)
+        public async Task<IActionResult> Create([Bind("RoomId,UserId,StartDate,EndDate,BreackfastIncluded,AllInclusive,Id")] Reservation reservation)
         {
             if (ModelState.IsValid)
             {
-                _context.Add(reservationDto);
+                reservation.UserId = _userManager.GetUserId(User);
+                _context.Add(reservation);
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
             }
-            ViewData["RoomId"] = new SelectList(_context.Reservation, "Id", "Name", reservationDto.RoomId);
-            ViewData["UserId"] = _userManager.GetUserId(User);
-            return View(reservationDto);
+            ViewData["RoomId"] = new SelectList(_context.Room, "Id", "Name", reservation.RoomId);
+            ViewData["UserId"] = new SelectList(_context.Users, "Id", "Username");
+            return View(reservation);
         }
 
         // GET: Reservations/Edit/5
@@ -105,7 +107,7 @@ namespace Hotel_Reservations_Manager.Controllers
                 return NotFound();
             }
             ViewData["RoomId"] = new SelectList(_context.Room, "Id", "Name", reservation.RoomId);
-            ViewData["UserId"] = _userManager.GetUserId(User);
+            ViewData["UserId"] = new SelectList(_context.Users, "Id", "Username");
             return View(reservation);
         }
 
@@ -113,9 +115,9 @@ namespace Hotel_Reservations_Manager.Controllers
         [HttpPost]
         [Authorize(Roles = "Admin")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("RoomId,UserId,StartDate,EndDate,BreackfastIncluded,AllInclusive,Id")] ReservationDTO reservationDto)
+        public async Task<IActionResult> Edit(int id, [Bind("RoomId,UserId,StartDate,EndDate,BreackfastIncluded,AllInclusive,Id")] Reservation reservation)
         {
-            if (id != reservationDto.Id)
+            if (id != reservation.Id)
             {
                 return NotFound();
             }
@@ -124,12 +126,12 @@ namespace Hotel_Reservations_Manager.Controllers
             {
                 try
                 {
-                    _context.Update(reservationDto);
+                    _context.Update(reservation);
                     await _context.SaveChangesAsync();
                 }
                 catch (DbUpdateConcurrencyException)
                 {
-                    if (!ReservationExists(reservationDto.Id))
+                    if (!ReservationExists(reservation.Id))
                     {
                         return NotFound();
                     }
@@ -140,9 +142,9 @@ namespace Hotel_Reservations_Manager.Controllers
                 }
                 return RedirectToAction(nameof(Index));
             }
-            ViewData["RoomId"] = new SelectList(_context.Room, "Id", "Name", reservationDto.RoomId);
-            ViewData["UserId"] = _userManager.GetUserId(User);
-            return View(reservationDto);
+            ViewData["RoomId"] = new SelectList(_context.Room, "Id", "Name", reservation.RoomId);
+            ViewData["UserId"] = new SelectList(_context.Users, "Id", "Username");
+            return View(reservation);
         }
 
         // GET: Reservations/Delete/5

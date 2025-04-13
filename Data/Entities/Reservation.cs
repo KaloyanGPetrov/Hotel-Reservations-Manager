@@ -2,7 +2,7 @@
 {
     public class Reservation : BaseEntity
     {
-        public string RoomId { get; set; }
+        public int RoomId { get; set; }
 
         public virtual Room Room { get; set; }
 
@@ -23,20 +23,24 @@
         {
             get
             {
-                int children = Clients.Where(x => x.IsOfAge == false).Count();
-                int adults = Clients.Where(x => x.IsOfAge == true).Count();
-                decimal sum = Room.PriceChild*children + Room.PriceChild*adults;
-
-                if (BreackfastIncluded)
+                if (Clients != null && Clients.Count > 0)
                 {
-                    sum += children * 5 + adults * 7;
-                }
+                    int children = Clients.Where(x => x.IsOfAge == false).Count();
+                    int adults = Clients.Where(x => x.IsOfAge == true).Count();
+                    decimal sum = Room.PriceChild*children + Room.PriceChild*adults;
 
-                if (AllInclusive)
-                {
-                    sum += children * 12 + adults * 20;
+                    if (BreackfastIncluded)
+                    {
+                        sum += children * 5 + adults * 7;
+                    }
+
+                    if (AllInclusive)
+                    {
+                        sum += children * 12 + adults * 20;
+                    }
+                    return sum;
                 }
-                return sum;
+                else return 0;
             }
         }
 
